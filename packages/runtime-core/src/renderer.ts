@@ -318,14 +318,22 @@ function baseCreateRenderer(
 ): HydrationRenderer
 
 // implementation
+/**
+ * 最终执行的是这个方法
+ * 来创建渲染器
+ *
+ * 这里闭包了很多方法
+ * createApp 主体在这里
+ */
 function baseCreateRenderer(
   options: RendererOptions,
   createHydrationFns?: typeof createHydrationFunctions
 ): any {
   // compile-time feature flags check
-  if (__ESM_BUNDLER__ && !__TEST__) {
-    initFeatureFlags()
-  }
+  // if (__ESM_BUNDLER__ && !__TEST__) {
+  //   initFeatureFlags()
+  // }
+  console.log(`开始创建渲染器`)
 
   const target = getGlobalThis()
   target.__VUE__ = true
@@ -362,11 +370,24 @@ function baseCreateRenderer(
     slotScopeIds = null,
     optimized = __DEV__ && isHmrUpdating ? false : !!n2.dynamicChildren
   ) => {
+    console.log(
+      `开始 patch : \n` + `n1 是 : `,
+      n1,
+      `\nn2 是 : `,
+      n2,
+      `\ncontainer 是 : `,
+      container
+    )
+
     if (n1 === n2) {
       return
     }
 
     // patching & not same type, unmount old tree
+    /**
+     * n1 和 n2 不是相同类型的 VNode
+     * 直接将 n1 卸载即可
+     */
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1)
       unmount(n1, parentComponent, parentSuspense, true)
@@ -381,12 +402,15 @@ function baseCreateRenderer(
     const { type, ref, shapeFlag } = n2
     switch (type) {
       case Text:
+        console.log(`开始处理文本节点`)
         processText(n1, n2, container, anchor)
         break
       case Comment:
+        console.log(`开始处理注释节点`)
         processCommentNode(n1, n2, container, anchor)
         break
       case Static:
+        console.log(`开始处理静态节点`)
         if (n1 == null) {
           mountStaticNode(n2, container, anchor, isSVG)
         } else if (__DEV__) {
@@ -394,6 +418,7 @@ function baseCreateRenderer(
         }
         break
       case Fragment:
+        console.log(`开始处理 Fragment `)
         processFragment(
           n1,
           n2,
@@ -408,6 +433,7 @@ function baseCreateRenderer(
         break
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
+          console.log(`开始处理 element`)
           processElement(
             n1,
             n2,
@@ -432,6 +458,7 @@ function baseCreateRenderer(
             optimized
           )
         } else if (shapeFlag & ShapeFlags.TELEPORT) {
+          console.log(`开始处理 TELEPORT`)
           ;(type as typeof TeleportImpl).process(
             n1 as TeleportVNode,
             n2 as TeleportVNode,
@@ -445,6 +472,7 @@ function baseCreateRenderer(
             internals
           )
         } else if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
+          console.log(`开始处理 SUSPENSE`)
           ;(type as typeof SuspenseImpl).process(
             n1,
             n2,
@@ -1157,8 +1185,21 @@ function baseCreateRenderer(
     slotScopeIds: string[] | null,
     optimized: boolean
   ) => {
+    console.log(
+      `开始处理 组件` + `\nn1 为 :`,
+      n1,
+      `\nn2 为 :`,
+      n2,
+      `\ncontainer 为 :`,
+      container,
+      `\nanchor 为 :`,
+      anchor
+    )
     n2.slotScopeIds = slotScopeIds
     if (n1 == null) {
+      /**
+       * 初始化
+       */
       if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
         ;(parentComponent!.ctx as KeepAliveContext).activate(
           n2,
@@ -1179,6 +1220,9 @@ function baseCreateRenderer(
         )
       }
     } else {
+      /**
+       * 更新
+       */
       updateComponent(n1, n2, optimized)
     }
   }
@@ -1192,10 +1236,13 @@ function baseCreateRenderer(
     isSVG,
     optimized
   ) => {
+    console.log(`开始挂载组件!`)
     // 2.x compat may pre-create the component instance before actually
     // mounting
     const compatMountInstance =
       __COMPAT__ && initialVNode.isCompatRoot && initialVNode.component
+    console.log(`开始创建组件实例!`)
+
     const instance: ComponentInternalInstance =
       compatMountInstance ||
       (initialVNode.component = createComponentInstance(
@@ -1204,14 +1251,15 @@ function baseCreateRenderer(
         parentSuspense
       ))
 
-    if (__DEV__ && instance.type.__hmrId) {
-      registerHMR(instance)
-    }
+    console.log(`组件实例为 : `, instance)
+    // if (__DEV__ && instance.type.__hmrId) {
+    //   registerHMR(instance)
+    // }
 
-    if (__DEV__) {
-      pushWarningContext(initialVNode)
-      startMeasure(instance, `mount`)
-    }
+    // if (__DEV__) {
+    //   pushWarningContext(initialVNode)
+    //   startMeasure(instance, `mount`)
+    // }
 
     // inject renderer internals for keepAlive
     if (isKeepAlive(initialVNode)) {
@@ -1220,13 +1268,16 @@ function baseCreateRenderer(
 
     // resolve props and slots for setup context
     if (!(__COMPAT__ && compatMountInstance)) {
-      if (__DEV__) {
-        startMeasure(instance, `init`)
-      }
+      // if (__DEV__) {
+      //   startMeasure(instance, `init`)
+      // }
+      /**
+       * 开始安装组件
+       */
       setupComponent(instance)
-      if (__DEV__) {
-        endMeasure(instance, `init`)
-      }
+      // if (__DEV__) {
+      //   endMeasure(instance, `init`)
+      // }
     }
 
     // setup() is async. This component relies on async logic to be resolved
@@ -1243,6 +1294,15 @@ function baseCreateRenderer(
       return
     }
 
+    console.log(
+      '---------------------------------------------------------------------------'
+    )
+    console.log(`开始处理 setupRenderEffect`)
+    console.log(`重点方法 !!!`)
+
+    console.log(
+      '---------------------------------------------------------------------------'
+    )
     setupRenderEffect(
       instance,
       initialVNode,
@@ -1253,10 +1313,10 @@ function baseCreateRenderer(
       optimized
     )
 
-    if (__DEV__) {
-      popWarningContext()
-      endMeasure(instance, `mount`)
-    }
+    // if (__DEV__) {
+    //   popWarningContext()
+    //   endMeasure(instance, `mount`)
+    // }
   }
 
   const updateComponent = (n1: VNode, n2: VNode, optimized: boolean) => {
@@ -1305,6 +1365,10 @@ function baseCreateRenderer(
   ) => {
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
+        console.log(`组件未挂载，走初始化逻辑`)
+        /**
+         * 初始化挂载
+         */
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
         const { bm, m, parent } = instance
@@ -1312,6 +1376,9 @@ function baseCreateRenderer(
 
         toggleRecurse(instance, false)
         // beforeMount hook
+        /**
+         * 调用生命周期 hook
+         */
         if (bm) {
           invokeArrayFns(bm)
         }
@@ -1370,13 +1437,19 @@ function baseCreateRenderer(
           if (__DEV__) {
             startMeasure(instance, `render`)
           }
+          console.log(`开始生成子节点的 VNode`)
           const subTree = (instance.subTree = renderComponentRoot(instance))
-          if (__DEV__) {
-            endMeasure(instance, `render`)
-          }
-          if (__DEV__) {
-            startMeasure(instance, `patch`)
-          }
+          console.log(`生成子节点的 subTree 是 : `, subTree)
+          // if (__DEV__) {
+          //   endMeasure(instance, `render`)
+          // }
+          // if (__DEV__) {
+          //   startMeasure(instance, `patch`)
+          // }
+          /**
+           * 把子节点 patch 到 container 中
+           */
+          console.log(`把子节点 patch 到 container 中`);
           patch(
             null,
             subTree,
@@ -1386,9 +1459,9 @@ function baseCreateRenderer(
             parentSuspense,
             isSVG
           )
-          if (__DEV__) {
-            endMeasure(instance, `patch`)
-          }
+          // if (__DEV__) {
+          //   endMeasure(instance, `patch`)
+          // }
           initialVNode.el = subTree.el
         }
         // mounted hook
@@ -1440,6 +1513,7 @@ function baseCreateRenderer(
         // #2458: deference mount-only object parameters to prevent memleaks
         initialVNode = container = anchor = null as any
       } else {
+        console.log(`组件挂载过，更新`)
         // updateComponent
         // This is triggered by mutation of component's own state (next: null)
         // OR parent calling processComponent (next: VNode)
@@ -1542,8 +1616,16 @@ function baseCreateRenderer(
     }
 
     // create reactive effect for rendering
+    /**
+     * 创建副作用函数
+     */
+    console.log(`开始创建副作用函数`)
     const effect = (instance.effect = new ReactiveEffect(
       componentUpdateFn,
+      /**
+       * 通过调度器
+       * 将更新的任务收集到队列中 等待被执行
+       */
       () => queueJob(instance.update),
       instance.scope // track it in component's effect scope
     ))
@@ -1554,17 +1636,16 @@ function baseCreateRenderer(
     // #1801, #2043 component render effects should allow recursive updates
     toggleRecurse(instance, true)
 
-    if (__DEV__) {
-      effect.onTrack = instance.rtc
-        ? e => invokeArrayFns(instance.rtc!, e)
-        : void 0
-      effect.onTrigger = instance.rtg
-        ? e => invokeArrayFns(instance.rtg!, e)
-        : void 0
-      // @ts-ignore (for scheduler)
-      update.ownerInstance = instance
-    }
-
+    // if (__DEV__) {
+    //   effect.onTrack = instance.rtc
+    //     ? e => invokeArrayFns(instance.rtc!, e)
+    //     : void 0
+    //   effect.onTrigger = instance.rtg
+    //     ? e => invokeArrayFns(instance.rtg!, e)
+    //     : void 0
+    //   // @ts-ignore (for scheduler)
+    //   update.ownerInstance = instance
+    // }
     update()
   }
 
@@ -2317,6 +2398,8 @@ function baseCreateRenderer(
   }
 
   const render: RootRenderFunction = (vnode, container, isSVG) => {
+    console.log(`开始调用 render 函数`)
+
     if (vnode == null) {
       if (container._vnode) {
         unmount(container._vnode, null, null, true)
@@ -2349,11 +2432,14 @@ function baseCreateRenderer(
     )
   }
 
-  return {
+  const res = {
     render,
     hydrate,
     createApp: createAppAPI(render, hydrate)
   }
+
+  console.log(`渲染器创建结束, 返回对象为 : `, res)
+  return res
 }
 
 function toggleRecurse(

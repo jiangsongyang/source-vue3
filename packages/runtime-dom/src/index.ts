@@ -39,7 +39,30 @@ let renderer: Renderer<Element | ShadowRoot> | HydrationRenderer
 
 let enabledHydration = false
 
+/**
+ * 自定义渲染器
+ *
+ * @returns
+ */
 function ensureRenderer() {
+  /**
+   * renderOptions in Browser:
+   *
+   * cloneNode: ƒ cloneNode(el)
+   * createComment: (text) => doc.createComment(text)
+   * createElement: (tag, isSVG, is, props) => {…}
+   * createText: (text) => doc.createTextNode(text)
+   * insert: (child, parent, anchor) => {…}
+   * insertStaticContent: ƒ insertStaticContent(content, parent, anchor, isSVG, start, end)
+   * nextSibling: (node) => node.nextSibling
+   * parentNode: (node) => node.parentNode
+   * patchProp: (el, key, prevValue, nextValue, isSVG = false, prevChildren, parentComponent, parentSuspense, unmountChildren) => {…}
+   * querySelector: (selector) => doc.querySelector(selector)
+   * remove: (child) => {…}
+   * setElementText: (el, text) => { el.textContent = text; }
+   * setScopeId: ƒ setScopeId(el, id)
+   * setText: (node, text) => { node.nodeV
+   */
   return (
     renderer ||
     (renderer = createRenderer<Node, Element | ShadowRoot>(rendererOptions))
@@ -63,48 +86,108 @@ export const hydrate = ((...args) => {
   ensureHydrationRenderer().hydrate(...args)
 }) as RootHydrateFunction
 
+/**
+ * 入口函数
+ */
 export const createApp = ((...args) => {
+  console.log(
+    '---------------------------------------------------------------------------'
+  )
+  console.log(`初始化开始!`)
+  console.log(
+    '---------------------------------------------------------------------------'
+  )
+
+  /**
+   * 获取 app 实例的流程
+   * 1 : 创建 渲染器
+   * 2 : 创建 app 实例
+   */
   const app = ensureRenderer().createApp(...args)
 
-  if (__DEV__) {
-    injectNativeTagCheck(app)
-    injectCompilerOptionsCheck(app)
-  }
+  console.log(`初始化创建的 app 实例：`, app)
 
+  /**
+   * 缓存原始的 mount 方法
+   */
   const { mount } = app
+  /**
+   * 提供给链式调用的 mount 方法
+   * @param containerOrSelector
+   * @returns
+   */
   app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
+    /**
+     * 获取 container
+     * 这里会验证 container 是否合法
+     */
     const container = normalizeContainer(containerOrSelector)
     if (!container) return
-
+    /**
+     * app._component 是 根组件
+     */
     const component = app._component
+    /**
+     * 如果 根组件没有提供 render 函数
+     */
     if (!isFunction(component) && !component.render && !component.template) {
       // __UNSAFE__
       // Reason: potential execution of JS expressions in in-DOM template.
       // The user must make sure the in-DOM template is trusted. If it's
       // rendered by the server, the template should not contain any user data.
+      /**
+       * 保存 container.innerHTML
+       * 用于将来的 compile
+       */
       component.template = container.innerHTML
+
+      /**
+       * 兼容相关 直接 pass
+       */
+
       // 2.x compat check
-      if (__COMPAT__ && __DEV__) {
-        for (let i = 0; i < container.attributes.length; i++) {
-          const attr = container.attributes[i]
-          if (attr.name !== 'v-cloak' && /^(v-|:|@)/.test(attr.name)) {
-            compatUtils.warnDeprecation(
-              DeprecationTypes.GLOBAL_MOUNT_CONTAINER,
-              null
-            )
-            break
-          }
-        }
-      }
+      // if (__COMPAT__ && __DEV__) {
+      //   for (let i = 0; i < container.attributes.length; i++) {
+      //     const attr = container.attributes[i]
+      //     if (attr.name !== 'v-cloak' && /^(v-|:|@)/.test(attr.name)) {
+      //       compatUtils.warnDeprecation(
+      //         DeprecationTypes.GLOBAL_MOUNT_CONTAINER,
+      //         null
+      //       )
+      //       break
+      //     }
+      //   }
+      // }
     }
 
-    // clear content before mounting
+    /**
+     * 清空 container
+     */
     container.innerHTML = ''
+    /**
+     * 开始挂载
+     */
+    console.log(`开始 mount`)
     const proxy = mount(container, false, container instanceof SVGElement)
+    console.log(`结束 mount`)
+    /**
+     * 清除容器上的属性
+     */
     if (container instanceof Element) {
       container.removeAttribute('v-cloak')
       container.setAttribute('data-v-app', '')
     }
+    console.log(
+      `---------------------------------------------------------------------------`
+    )
+    console.log(`初始化结束!`)
+    console.log(
+      `---------------------------------------------------------------------------`
+    )
+
+    /**
+     * 返回一个 app 实例
+     */
     return proxy
   }
 

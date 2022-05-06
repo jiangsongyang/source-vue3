@@ -554,18 +554,6 @@ function _createVNode(
     ? ShapeFlags.FUNCTIONAL_COMPONENT
     : 0
 
-  if (__DEV__ && shapeFlag & ShapeFlags.STATEFUL_COMPONENT && isProxy(type)) {
-    type = toRaw(type)
-    warn(
-      `Vue received a Component which was made a reactive object. This can ` +
-        `lead to unnecessary performance overhead, and should be avoided by ` +
-        `marking the component with \`markRaw\` or using \`shallowRef\` ` +
-        `instead of \`ref\`.`,
-      `\nComponent that was made reactive: `,
-      type
-    )
-  }
-
   return createBaseVNode(
     type,
     props,

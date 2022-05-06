@@ -174,11 +174,19 @@ export type CreateAppFunction<HostElement> = (
 
 let uid = 0
 
+/**
+ * createApp 主体
+ */
 export function createAppAPI<HostElement>(
   render: RootRenderFunction,
   hydrate?: RootHydrateFunction
 ): CreateAppFunction<HostElement> {
+  /**
+   * rootComponent 接收的 根组件
+   */
   return function createApp(rootComponent, rootProps = null) {
+    console.log(`开始调用 createApp 了 , 接收到的根组件为 : `, rootComponent)
+
     if (!isFunction(rootComponent)) {
       rootComponent = { ...rootComponent }
     }
@@ -188,13 +196,20 @@ export function createAppAPI<HostElement>(
       rootProps = null
     }
 
+    /**
+     * 创建一个全局的上下文
+     */
     const context = createAppContext()
     const installedPlugins = new Set()
 
     let isMounted = false
 
+    /**
+     * App 的实例
+     */
     const app: App = (context.app = {
       _uid: uid++,
+      // 将根组件保存在 _component 中
       _component: rootComponent as ConcreteComponent,
       _props: rootProps,
       _container: null,
@@ -284,36 +299,32 @@ export function createAppAPI<HostElement>(
         isSVG?: boolean
       ): any {
         if (!isMounted) {
+          console.log(`当前组件为 : `, rootContainer)
+          console.log(`开始创建 VNode`)
           const vnode = createVNode(
             rootComponent as ConcreteComponent,
             rootProps
           )
+          console.log(`创建完成的 VNode 是 : `, vnode)
           // store app context on the root VNode.
           // this will be set on the root instance on initial mount.
           vnode.appContext = context
 
-          // HMR root reload
-          if (__DEV__) {
-            context.reload = () => {
-              render(cloneVNode(vnode), rootContainer, isSVG)
-            }
-          }
-
-          if (isHydrate && hydrate) {
-            hydrate(vnode as VNode<Node, Element>, rootContainer as any)
-          } else {
-            render(vnode, rootContainer, isSVG)
-          }
+          /**
+           * 开始调用 render 方法
+           */
+          render(vnode, rootContainer, isSVG)
+          /**
+           * 更改标记
+           */
           isMounted = true
+          
           app._container = rootContainer
-          // for devtools and telemetry
-          ;(rootContainer as any).__vue_app__ = app
-
-          if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-            app._instance = vnode.component
-            devtoolsInitApp(app, version)
-          }
-
+       
+          /**
+           * 获取公开代理
+           * ???
+           */
           return getExposeProxy(vnode.component!) || vnode.component!.proxy
         } else if (__DEV__) {
           warn(
@@ -356,7 +367,9 @@ export function createAppAPI<HostElement>(
     if (__COMPAT__) {
       installAppCompatProperties(app, context, render)
     }
-
+    /**
+     * 返回 app
+     */
     return app
   }
 }

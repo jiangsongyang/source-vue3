@@ -583,17 +583,28 @@ export function setupComponent(
   instance: ComponentInternalInstance,
   isSSR = false
 ) {
+  console.log(`开始安装组件 : `, instance)
+
   isInSSRComponentSetup = isSSR
 
   const { props, children } = instance.vnode
+
   const isStateful = isStatefulComponent(instance)
+  console.log(`当前组件 "${!!isStateful ? '是' : '否'}" statefulComponent`)
+
+  console.log(`开始给当前组件添加 props`)
   initProps(instance, props, isStateful, isSSR)
+  console.log(`当前组件添加 props 后是 : `, instance)
+  console.log(`开始给当前组件添加 slots`)
   initSlots(instance, children)
+  console.log(`当前组件添加 slots 后是 : `, instance)
 
   const setupResult = isStateful
     ? setupStatefulComponent(instance, isSSR)
     : undefined
+
   isInSSRComponentSetup = false
+
   return setupResult
 }
 
@@ -601,41 +612,50 @@ function setupStatefulComponent(
   instance: ComponentInternalInstance,
   isSSR: boolean
 ) {
+  console.log(`开始处理 setup option`)
+
   const Component = instance.type as ComponentOptions
 
-  if (__DEV__) {
-    if (Component.name) {
-      validateComponentName(Component.name, instance.appContext.config)
-    }
-    if (Component.components) {
-      const names = Object.keys(Component.components)
-      for (let i = 0; i < names.length; i++) {
-        validateComponentName(names[i], instance.appContext.config)
-      }
-    }
-    if (Component.directives) {
-      const names = Object.keys(Component.directives)
-      for (let i = 0; i < names.length; i++) {
-        validateDirectiveName(names[i])
-      }
-    }
-    if (Component.compilerOptions && isRuntimeOnly()) {
-      warn(
-        `"compilerOptions" is only supported when using a build of Vue that ` +
-          `includes the runtime compiler. Since you are using a runtime-only ` +
-          `build, the options should be passed via your build tool config instead.`
-      )
-    }
-  }
+  // if (__DEV__) {
+  //   if (Component.name) {
+  //     validateComponentName(Component.name, instance.appContext.config)
+  //   }
+  //   if (Component.components) {
+  //     const names = Object.keys(Component.components)
+  //     for (let i = 0; i < names.length; i++) {
+  //       validateComponentName(names[i], instance.appContext.config)
+  //     }
+  //   }
+  //   if (Component.directives) {
+  //     const names = Object.keys(Component.directives)
+  //     for (let i = 0; i < names.length; i++) {
+  //       validateDirectiveName(names[i])
+  //     }
+  //   }
+  //   if (Component.compilerOptions && isRuntimeOnly()) {
+  //     warn(
+  //       `"compilerOptions" is only supported when using a build of Vue that ` +
+  //         `includes the runtime compiler. Since you are using a runtime-only ` +
+  //         `build, the options should be passed via your build tool config instead.`
+  //     )
+  //   }
+  // }
   // 0. create render proxy property access cache
   instance.accessCache = Object.create(null)
   // 1. create public instance / render proxy
   // also mark it raw so it's never observed
+  /**
+   * 创建代理对象
+   * 这样就可以在模板中直接访问 ref 不用 ref.value 了
+   */
   instance.proxy = markRaw(new Proxy(instance.ctx, PublicInstanceProxyHandlers))
-  if (__DEV__) {
-    exposePropsOnRenderContext(instance)
-  }
+  // if (__DEV__) {
+  //   exposePropsOnRenderContext(instance)
+  // }
   // 2. call setup()
+  /**
+   * 调用 setup
+   */
   const { setup } = Component
   if (setup) {
     const setupContext = (instance.setupContext =
@@ -643,6 +663,9 @@ function setupStatefulComponent(
 
     setCurrentInstance(instance)
     pauseTracking()
+    /**
+     * 执行 setup
+     */
     const setupResult = callWithErrorHandling(
       setup,
       instance,
@@ -652,6 +675,11 @@ function setupStatefulComponent(
     resetTracking()
     unsetCurrentInstance()
 
+    console.log(`执行完 setup 后 得到的结果是 : `, setupResult)
+
+    /**
+     * 处理 setupResult
+     */
     if (isPromise(setupResult)) {
       setupResult.then(unsetCurrentInstance, unsetCurrentInstance)
       if (isSSR) {
@@ -695,7 +723,13 @@ export function handleSetupResult(
   setupResult: unknown,
   isSSR: boolean
 ) {
+  console.log(`开始处理 setupResult`)
   if (isFunction(setupResult)) {
+    console.log(`当前结果是一个函数 , 所以把这个结果当成 render function`)
+    /**
+     * 如果 setupResult 的类型是 function
+     * 就把他当成 render 函数来使用
+     */
     // setup returned an inline render function
     if (__SSR__ && (instance.type as ComponentOptions).__ssrInlineRender) {
       // when the function's name is `ssrRender` (compiled by SFC inline mode),
@@ -705,21 +739,25 @@ export function handleSetupResult(
       instance.render = setupResult as InternalRenderFunction
     }
   } else if (isObject(setupResult)) {
-    if (__DEV__ && isVNode(setupResult)) {
-      warn(
-        `setup() should not return VNodes directly - ` +
-          `return a render function instead.`
-      )
-    }
+    console.log(
+      `当前结果是一个对象 , 所以把这个结果挂载到 instance.setupState 上`,
+      instance
+    )
+    // if (__DEV__ && isVNode(setupResult)) {
+    //   warn(
+    //     `setup() should not return VNodes directly - ` +
+    //       `return a render function instead.`
+    //   )
+    // }
     // setup returned bindings.
     // assuming a render function compiled from template is present.
-    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-      instance.devtoolsRawSetupState = setupResult
-    }
+    // if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+    //   instance.devtoolsRawSetupState = setupResult
+    // }
     instance.setupState = proxyRefs(setupResult)
-    if (__DEV__) {
-      exposeSetupStateOnRenderContext(instance)
-    }
+    // if (__DEV__) {
+    //   exposeSetupStateOnRenderContext(instance)
+    // }
   } else if (__DEV__ && setupResult !== undefined) {
     warn(
       `setup() should return an object. Received: ${
@@ -759,6 +797,8 @@ export function finishComponentSetup(
   isSSR: boolean,
   skipOptions?: boolean
 ) {
+  console.log(`开始 setup 处理的收尾工作`, instance)
+
   const Component = instance.type as ComponentOptions
 
   if (__COMPAT__) {
@@ -771,7 +811,11 @@ export function finishComponentSetup(
 
   // template / render function normalization
   // could be already set when returned from setup()
+  /**
+   * 开始判断是否存在 render 函数
+   */
   if (!instance.render) {
+    console.log(`当前组件实例上不存在 render 函数 , 需要生成 render`)
     // only do on-the-fly compile if not in SSR - SSR on-the-fly compilation
     // is done by server-renderer
     if (!isSSR && compile && !Component.render) {
@@ -781,9 +825,9 @@ export function finishComponentSetup(
           instance.vnode.props['inline-template']) ||
         Component.template
       if (template) {
-        if (__DEV__) {
-          startMeasure(instance, `compile`)
-        }
+        // if (__DEV__) {
+        //   startMeasure(instance, `compile`)
+        // }
         const { isCustomElement, compilerOptions } = instance.appContext.config
         const { delimiters, compilerOptions: componentCompilerOptions } =
           Component
@@ -804,10 +848,28 @@ export function finishComponentSetup(
             extend(finalCompilerOptions.compatConfig, Component.compatConfig)
           }
         }
-        Component.render = compile(template, finalCompilerOptions)
-        if (__DEV__) {
-          endMeasure(instance, `compile`)
-        }
+        console.log(
+          '---------------------------------------------------------------------------'
+        )
+        console.log(`开始编译!`)
+        console.log(`编译的 template 是 : `, template)
+        console.log(
+          '---------------------------------------------------------------------------'
+        )
+        const render = compile(template, finalCompilerOptions)
+        console.log(
+          '---------------------------------------------------------------------------'
+        )
+        console.log(`编译结束!`)
+        console.log(`生成的 render 函数是 : `)
+        console.log(render.toString())
+        console.log(
+          '---------------------------------------------------------------------------'
+        )
+        Component.render = render
+        // if (__DEV__) {
+        //   endMeasure(instance, `compile`)
+        // }
       }
     }
 
@@ -822,6 +884,9 @@ export function finishComponentSetup(
   }
 
   // support for 2.x options
+  /**
+   * 兼容 2.x 的 option API
+   */
   if (__FEATURE_OPTIONS_API__ && !(__COMPAT__ && skipOptions)) {
     setCurrentInstance(instance)
     pauseTracking()
@@ -832,24 +897,24 @@ export function finishComponentSetup(
 
   // warn missing template/render
   // the runtime compilation of template in SSR is done by server-render
-  if (__DEV__ && !Component.render && instance.render === NOOP && !isSSR) {
-    /* istanbul ignore if */
-    if (!compile && Component.template) {
-      warn(
-        `Component provided template option but ` +
-          `runtime compilation is not supported in this build of Vue.` +
-          (__ESM_BUNDLER__
-            ? ` Configure your bundler to alias "vue" to "vue/dist/vue.esm-bundler.js".`
-            : __ESM_BROWSER__
-            ? ` Use "vue.esm-browser.js" instead.`
-            : __GLOBAL__
-            ? ` Use "vue.global.js" instead.`
-            : ``) /* should not happen */
-      )
-    } else {
-      warn(`Component is missing template or render function.`)
-    }
-  }
+  // if (__DEV__ && !Component.render && instance.render === NOOP && !isSSR) {
+  //   /* istanbul ignore if */
+  //   if (!compile && Component.template) {
+  //     warn(
+  //       `Component provided template option but ` +
+  //         `runtime compilation is not supported in this build of Vue.` +
+  //         (__ESM_BUNDLER__
+  //           ? ` Configure your bundler to alias "vue" to "vue/dist/vue.esm-bundler.js".`
+  //           : __ESM_BROWSER__
+  //           ? ` Use "vue.esm-browser.js" instead.`
+  //           : __GLOBAL__
+  //           ? ` Use "vue.global.js" instead.`
+  //           : ``) /* should not happen */
+  //     )
+  //   } else {
+  //     warn(`Component is missing template or render function.`)
+  //   }
+  // }
 }
 
 function createAttrsProxy(instance: ComponentInternalInstance): Data {
