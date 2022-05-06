@@ -29,7 +29,7 @@ import { h, ref } from '../../packages/vue/dist/vue.esm.js'
 //   }
 // }
 /**
- * 不 render 函数
+ * 无 render 函数
  */
 export const App = {
   setup() {
